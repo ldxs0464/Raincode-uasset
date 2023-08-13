@@ -1,6 +1,6 @@
 #file_path = "RC_SpSel.uasset"
-#file_path = "RC_HanAte.uasset"
-file_path = "RC_RCGAME_00_0640.uasset"
+#file_path = ("SCENARIO_CH00.uasset")
+file_path = ("RCSystemText02.uasset")
 #file_path2 = "RC_SpSel.uasset"
 import os
 def bytereplace(bytes_data,new_bytes,pos):
@@ -45,6 +45,10 @@ def convertUassetText(filepath):
             printbytes(header)
             pos=pos+dataheadersize
 
+            temp = int.from_bytes(bytes_data[pos:pos + 4], byteorder='little', signed=False)
+            if temp==0:
+                pos=pos+4
+
             data_len = int.from_bytes(bytes_data[pos:pos + 4], byteorder='little', signed=True)
             isUnicode=False
 
@@ -74,6 +78,13 @@ def convertUassetText(filepath):
                 stringData.append("")
 
             #skip 38 5B 01 00
+
+            temp = int.from_bytes(bytes_data[pos:pos + 4], byteorder='little', signed=False)
+
+            printbytes(bytes_data[pos:pos + 4])
+            print()
+            if temp<100:
+                pos=pos+temp
             pos=pos+4
             pass
         #print(bytes_data)
@@ -90,11 +101,15 @@ def repackUassetText(file_path):
     data_header = []
     data_pos_start = []
     data_pos_end = []
+    data_end=""
     data_position=0
     data_num=0
+    dataheadersize = 19
+    previousEndCheck = 0
     with open('%s.txt' % os.path.splitext(file_path)[0], 'r', encoding='utf-16le') as file:
         for item in file:
             item= item.replace("\x0a", "")
+            item = item.replace("\ufeff", "")
             stringData.append(item)
     with open(file_path, "rb") as file:
         bytes_data = file.read()
@@ -111,9 +126,14 @@ def repackUassetText(file_path):
                 print("append a blank one...")
         pos = pos + 18  # for data header skip...
         for i in range(0, data_num):
-            data_for_start=bytes_data[pos:pos+19]
+            data_for_start=bytes_data[pos:pos + dataheadersize]
 
-            pos = pos + 19
+            pos = pos + dataheadersize
+
+            temp = int.from_bytes(bytes_data[pos:pos + 4], byteorder='little', signed=False)
+            if temp == 0:
+                data_for_start = data_for_start + bytes_data[pos:pos + 4]
+                pos = pos + 4
             try:
                 stringData[i] = stringData[i].replace("|", "\x0D\x0A")
                 if len(stringData[i]) == 0:
@@ -155,9 +175,23 @@ def repackUassetText(file_path):
             #stringData.append(data)
             # skip 38 5B 01 00
 
-            data_pos_end.append(bytes_data[pos:pos+4])
-            pos = pos + 4
+            temp = int.from_bytes(bytes_data[pos:pos + 4], byteorder='little', signed=False)
 
+            printbytes(bytes_data[pos:pos + 4])
+            print()
+
+            if temp < 100:
+                data_pos_end.append(bytes_data[pos:pos + 4 + temp])
+                pos = pos + temp
+            else:
+                data_pos_end.append(bytes_data[pos:pos + 4])
+            pos = pos + 4
+            if i>=data_num-1:
+                #check all data is go there...
+                if pos!=len(bytes_data):
+                    print("size not match,so add on last one...")
+                    data_end=bytes_data[pos:]
+                pass
 
             pass
         # print(bytes_data)
@@ -174,9 +208,14 @@ def repackUassetText(file_path):
     data_size_head = int.from_bytes(bytes_data[44:48], byteorder='little')
     #data_size_header = int.from_bytes(bytes_data[data_size_head+8:data_size_head+12], byteorder='little')
 
-    bytes_data=bytereplace(bytes_data,string_in_bytes.to_bytes(4, byteorder='little'),data_size_head+8)
+    string_in_bytes = string_in_bytes + len(data_end)
+    #i don't know why I should I put this here...
+    #string_in_bytes = string_in_bytes + 8
 
-    with open('%s.temp' % os.path.splitext(file_path)[0], 'wb') as file:
+    data_size_head=data_size_head
+    bytes_data=bytereplace(bytes_data,string_in_bytes.to_bytes(4, byteorder='little'),(data_size_head+8))
+
+    with open('out/%s.uasset' % os.path.splitext(file_path)[0], 'wb') as file:
 
         file.write(bytes_data[0:data_position])
         file.write(data_header)
@@ -189,10 +228,12 @@ def repackUassetText(file_path):
                 file.write(b'\x00')
                 file.write(b'\x00')
             file.write(data_pos_end[i])
-
+        if len(data_end)>0:
+            file.write(data_end)
 
     pass
 
-convertUassetText(file_path)
+#convertUassetText(file_path)
 
-#repackUassetText(file_path)
+repackUassetText(file_path)
+#convertUassetText("out/"+file_path)
