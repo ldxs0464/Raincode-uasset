@@ -1,6 +1,9 @@
 #file_path = "RC_SpSel.uasset"
 #file_path = ("SCENARIO_CH00.uasset")
-file_path = ("RCSystemText02.uasset")
+file_path = ("RCSpeakerList.uasset")
+
+#file_path = ("RCSystemText01.uasset")
+#file_path = ("question.uasset")
 #file_path2 = "RC_SpSel.uasset"
 import os
 def bytereplace(bytes_data,new_bytes,pos):
@@ -232,8 +235,18 @@ def repackUassetText(file_path):
             file.write(data_end)
 
     pass
-
+def walkinsizefolder(folder_path):
+    fileCount=0
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            if file.endswith('.uasset'):
+                file_path = os.path.join(root, file)
+                print(file_path)
+                convertUassetText(file_path)
+                fileCount+=1
+    print("files=",fileCount)
 #convertUassetText(file_path)
 
 repackUassetText(file_path)
-#convertUassetText("out/"+file_path)
+#convertUassetText(file_path)
+#walkinsizefolder("Texts")
