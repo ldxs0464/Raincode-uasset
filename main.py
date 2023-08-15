@@ -1,10 +1,8 @@
 #file_path = "RC_SpSel.uasset"
 #file_path = ("SCENARIO_CH00.uasset")
-file_path = ("RCSpeakerList.uasset")
+file_path = ("ImageText.uasset")
 
-#file_path = ("RCSystemText01.uasset")
-#file_path = ("question.uasset")
-#file_path2 = "RC_SpSel.uasset"
+import csv
 import os
 def bytereplace(bytes_data,new_bytes,pos):
     bytes_data=bytes_data[:pos]+new_bytes+bytes_data[pos+len(new_bytes):]
@@ -16,6 +14,7 @@ def printbytes(byte_data):
 def convertUassetText(filepath):
     stringData=[]
     dataheadersize = 19
+    noerror=True
     previousEndCheck=0
     with (open(filepath, "rb") as file):
         bytes_data = file.read()
@@ -55,49 +54,59 @@ def convertUassetText(filepath):
             data_len = int.from_bytes(bytes_data[pos:pos + 4], byteorder='little', signed=True)
             isUnicode=False
 
-            #unicode uses negative values...
-            if data_len<0:
-                data_len=-data_len;
-                #print("Unicode String!")
-                data_len=data_len*2
-                isUnicode=True
-            #data length header skip
-            pos=pos+4
+            try:
+                #unicode uses negative values...
+                if data_len<0:
+                    data_len=-data_len;
+                    #print("Unicode String!")
+                    data_len=data_len*2
+                    isUnicode=True
+                #data length header skip
+                pos=pos+4
 
-            if isUnicode:
-                data = bytes_data[pos:pos + data_len - 2]
-                data = data.decode('utf-16le')
-            else:
-                data = bytes_data[pos:pos + data_len - 1]
-                data = data.decode("ascii")
-            #add length for next line
-            pos = pos + data_len
-            #raincode uses 0D 0A to new line...
-            data = data.replace('\x0d\x0a', '|')
-            print("data[", i, "][", str(data), "]", sep="")
-            if len(data)>0:
-                stringData.append(data)
-            else:
+
+                if isUnicode:
+                    data = bytes_data[pos:pos + data_len - 2]
+                    data = data.decode('utf-16le')
+                else:
+                    data = bytes_data[pos:pos + data_len - 1]
+                    data = data.decode("ascii")
+                #add length for next line
+                pos = pos + data_len
+                #raincode uses 0D 0A to new line...
+                data = data.replace('\x0d\x0a', '|')
+                print("data[", i, "][", str(data), "]", sep="")
+                if len(data)>0:
+                    stringData.append(data)
+                else:
+                    stringData.append("")
+
+                #skip 38 5B 01 00
+
+                temp = int.from_bytes(bytes_data[pos:pos + 4], byteorder='little', signed=False)
+
+                printbytes(bytes_data[pos:pos + 4])
+                print()
+                if temp<100:
+                    pos=pos+temp
+                pos=pos+4
+            except:
+                print('\033[31m'+"data[",i,"]Exception occured!"+'\033[0m',sep="")
                 stringData.append("")
-
-            #skip 38 5B 01 00
-
-            temp = int.from_bytes(bytes_data[pos:pos + 4], byteorder='little', signed=False)
-
-            printbytes(bytes_data[pos:pos + 4])
-            print()
-            if temp<100:
-                pos=pos+temp
-            pos=pos+4
+                noerror=False
             pass
         #print(bytes_data)
-    with open('%s.txt'%os.path.splitext(filepath)[0], 'w',encoding='utf-16le') as file:
-        file.write('\ufeff')
+    with open('%s.txt'%os.path.splitext(filepath)[0], 'wb') as file:
+        file.write(bytes([0xFF, 0xFE]))
         for i in range(0,len(stringData)):
+            outputstr= stringData[i].encode('utf-16le')
             if i == len(stringData)-1:
-                file.write(stringData[i])
+                file.write(outputstr)
             else:
-                file.write(stringData[i]+'\n')
+                file.write(outputstr)
+                file.write(bytes([0x0A, 0x00]))
+    return noerror
+
 def repackUassetText(file_path):
     stringData = []
     bytes_data=""
@@ -155,7 +164,7 @@ def repackUassetText(file_path):
 
             # unicode uses negative values...
             if data_len < 0:
-                data_len = -data_len;
+                data_len = -data_len
                 # print("Unicode String!")
                 data_len = data_len * 2
                 isUnicode = True
@@ -180,8 +189,8 @@ def repackUassetText(file_path):
 
             temp = int.from_bytes(bytes_data[pos:pos + 4], byteorder='little', signed=False)
 
-            printbytes(bytes_data[pos:pos + 4])
-            print()
+            #printbytes(bytes_data[pos:pos + 4])
+            #print()
 
             if temp < 100:
                 data_pos_end.append(bytes_data[pos:pos + 4 + temp])
@@ -195,7 +204,6 @@ def repackUassetText(file_path):
                     print("size not match,so add on last one...")
                     data_end=bytes_data[pos:]
                 pass
-
             pass
         # print(bytes_data)
     string_in_bytes = len(data_header)
@@ -241,12 +249,25 @@ def walkinsizefolder(folder_path):
         for file in files:
             if file.endswith('.uasset'):
                 file_path = os.path.join(root, file)
-                print(file_path)
-                convertUassetText(file_path)
+                if convertUassetText(file_path) == False:
+                    print('\033[31m' + "Exception occured in file[" + file + "] export!!" + '\033[0m', sep="")
                 fileCount+=1
     print("files=",fileCount)
-#convertUassetText(file_path)
 
-repackUassetText(file_path)
-#convertUassetText(file_path)
-#walkinsizefolder("Texts")
+def csvFileList(csvfile):
+    with open(csvfile, 'r', newline='', encoding='utf-8') as file:
+        csv_reader = csv.reader(file)
+        for row in csv_reader:
+            #print(row[0],row[1],row[2])
+            filelocation=row[0]+"/"+row[1]
+            print(filelocation)
+            if row[2] == "0":
+                if convertUassetText(filelocation) == False:
+                    print('\033[31m' + "Exception occured in file["+row[1]+"] export!!" + '\033[0m', sep="")
+#csvFileList("filelist.csv")
+#convertUassetText2(file_path)
+convertUassetText(file_path)
+#repackUassetText(file_path)
+
+#walkinsizefolder("TextsJP")
+
