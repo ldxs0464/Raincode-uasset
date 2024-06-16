@@ -4,6 +4,8 @@
 
 1.uasset.py와 동일한 폴더에 Texts 폴더를 복사한다
 
+<img width="234" alt="스크린샷 2024-06-16 오후 8 35 38" src="https://github.com/ldxs0464/Raincode-uasset/assets/67818368/9fbce64d-557e-4ab5-beb9-a6a380203a2c">
+
 *일본어 기준 게임 내부 파일 위치 \RC\Content\RC\Texts
 
 *영어 기준 게임 내부 파일 위치 \RC\Content\L10N\en\RC\Texts
